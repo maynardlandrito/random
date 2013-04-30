@@ -1,0 +1,560 @@
+<html>
+    <head>
+        <style type="text/css">
+			#titlePane{
+				text-align: center;
+				font-size: 50px;
+            }
+			
+            #mainContainer{
+                width: 1000px;
+                height: 550px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            
+            #topPane{
+                width: 240px;
+                height: 30px;
+                margin: auto;
+                text-align: center;
+                margin-bottom: 5px;
+            }
+            
+            #leftPane{
+                width: 240px;
+                height: 450px;
+                float: left;
+                text-align: center;
+            }
+            
+            #rightPane{
+                width: 240px;
+                height: 450px;
+                float: right;
+                text-align: center;
+            }
+            
+            #centerPane{
+                width: 504px;
+                height: 432px;
+                margin: auto;
+            }
+            
+            #bottomPane{
+                width: 504px;
+                height: 60px;
+                margin: auto;
+                margin-top: 5px;
+				text-align: center;
+				font-size: 30px;
+            }
+            
+            .column{
+                outline: solid black 1px;
+                float: left;
+                width: 72px;
+                height: 432px;
+            }
+            
+            .chip{
+                width: 72px;
+                height: 72px;
+                pointer-events: none;
+                position: absolute;
+            }
+        </style>
+        
+        <script type="text/javascript">
+            var dest = 0;
+            var currId = -1;
+			var map;
+			var turn = 2;
+			var animating = false;
+			var gameEnd = false;
+			var lastCol, lastRow;
+			var p1Type, p2Type, p1Name, p2Name;
+			var firstTurn = 2;
+			
+            function getPlayerType(num){
+                var radio = document.getElementsByName("p" + num + "Type");
+                for (var i = 0, length = radio.length; i < length; i++) {
+                    if (radio[i].checked) {
+                        return radio[i].value;
+                    }
+                }
+            }
+            
+			function countFreeSpace(col){
+				for(var i = 0; i < 6; i++){
+					if(map[col][i] != 0){
+						return i;
+					}
+				}
+				
+				return 6;
+			}
+			
+            function drop(num, human){
+				var space = (countFreeSpace(num));
+				if(animating || space <= 0 || gameEnd){
+					return 0;
+				}
+				
+				if(human == true && ((turn == 1 && p1Type == "computer") || (turn == 2 && p2Type == "computer"))){
+					return 0;
+				}
+				
+                var pane = document.getElementById("centerPane");
+                var newImg = document.createElement('img');
+                dest = getPos(pane).y + ((space-1)*72);
+				map[num][space-1] = turn;
+				lastCol = num;
+				lastRow = space-1;
+                currId = num + "" + (space-1);
+                newImg.setAttribute("id","chip" + currId);
+                newImg.setAttribute("class","chip");
+				if(turn == 1){
+					newImg.setAttribute("src","redChip.png");
+				}
+				else{
+					newImg.setAttribute("src","blueChip.png");
+				}
+                newImg.style.top = getPos(pane).y + "px";
+                newImg.style.left = getPos(pane).x + (72*num) + "px";
+				newImg.innerHTML = turn;
+                pane.appendChild(newImg);
+				animating = true;
+                anim();
+            }
+            
+            function anim(){
+                var obj = document.getElementById("chip" + currId);
+                if(parseInt(obj.style.top) + 30 <= dest){
+                    obj.style.top = parseInt(obj.style.top) + 30 + "px";
+                    setTimeout(anim, 20);
+                }
+                else{
+                    obj.style.top = dest + "px";
+					animating = false;
+					var win = checkWin(turn);
+					if(win == 1){
+						//p1wins
+						gameEnd = true;
+						var points = document.getElementById("p1Wins");
+						points.innerHTML = (parseInt(points.innerHTML) + 1) + "";
+						document.getElementById("bottomPane").innerHTML = p1Name + " wins!";
+					}
+					else if(win == 2){
+						//p2wins
+						gameEnd = true;
+						var points = document.getElementById("p2Wins");
+						points.innerHTML = (parseInt(points.innerHTML) + 1) + "";
+						document.getElementById("bottomPane").innerHTML = p2Name + " wins!";
+					}
+					else if(win == -1){
+						//draw, no more moves
+						gameEnd = true;
+						document.getElementById("bottomPane").innerHTML = "Draw!";
+					}
+					else{
+						if(turn == 1){
+							turn = 2;
+							document.getElementById("bottomPane").innerHTML =  p2Name + "'s turn -->>";
+							if(p2Type == "computer"){
+								setTimeout(computerMove, 20);
+							}
+						}
+						else{
+							turn = 1;
+							document.getElementById("bottomPane").innerHTML = "<<-- " + p1Name + "'s turn";
+							if(p1Type == "computer"){
+								setTimeout(computerMove, 20);
+							}
+						}
+					}
+                }
+            }
+            
+            function getPos(div) {
+                for (var tempX=0, tempY=0;
+                    div != null;
+                    tempX += div.offsetLeft, tempY += div.offsetTop, div = div.offsetParent);
+                return {x: tempX, y: tempY};
+            }
+			
+			function init(){
+				map = new Array();
+				for(var i = 0; i < 7; i++){
+					var temp = new Array(6);
+					map.push(temp);
+				}
+				
+				window.onresize = function(event) {
+					var obj;
+					var pane = document.getElementById("centerPane");
+					for(var i = 0; i < 7; i++){
+						for(var j = 0; j < 6; j++){
+							obj = document.getElementById("chip" + i + "" + j);
+							if(obj != null){
+								obj.style.top = getPos(pane).y + ((j)*72) + "px";
+								obj.style.left = getPos(pane).x + (72*i) + "px";
+							}
+						}
+					}
+				}
+				
+				newMatch();
+			}
+			
+			function newMatch(){
+				if(animating){
+					return 0;
+				}
+				
+				var p1 = document.getElementById("p1Wins");
+				p1.innerHTML = "0";
+				var p2 = document.getElementById("p2Wins");
+				p2.innerHTML = "0";
+				
+				newGame();
+			}
+			
+			function newGame(){
+				if(animating){
+					return 0;
+				}
+				
+				for(var i = 0; i < 7; i++){
+					for(var j = 0; j < 6; j++){
+						map[i][j] = 0;
+					}
+				}
+				
+				var pane = document.getElementById("centerPane");
+				var children = pane.getElementsByTagName("img");
+				var chips = new Array();
+				for(var i = 0; i < children.length; i++){
+					if(children[i].getAttribute("class") == "chip"){
+						chips.push(children[i]);
+					}
+				}
+				
+				for(var i = 0; i < chips.length; i++){
+					pane.removeChild(chips[i]);
+				}
+				
+				gameEnd = false;
+				p1Name = document.getElementById("p1Name").value;
+				if(p1Name == ""){
+					p1Name = "Player 1";
+				}
+				p2Name = document.getElementById("p2Name").value;
+				if(p2Name == ""){
+					p2Name = "Player 2";
+				}
+				p1Type = getPlayerType(1);
+				p2Type = getPlayerType(2);
+				if(firstTurn == 1){
+					firstTurn = 2;
+					turn = 2;
+					document.getElementById("bottomPane").innerHTML =  p2Name + "'s turn -->>";
+					if(p2Type == "computer"){
+						setTimeout(computerMove, 20);
+					}
+				}
+				else{
+					firstTurn = 1;
+					turn = 1;
+					document.getElementById("bottomPane").innerHTML = "<<-- " + p1Name + "'s turn";
+					if(p1Type == "computer"){
+						setTimeout(computerMove, 20);
+					}
+				}
+			}
+			
+			function checkWin(player){
+				//check win
+				var count = 0;
+				//check vertical
+				if(lastRow + 3 <= 5){
+					count = 1;
+					for(var i = lastRow + 1; i <= lastRow + 3; i++){
+						if(map[lastCol][i] == player){
+							count += 1;
+						}
+					}
+					if(count >= 4){
+						return player;
+					}
+				}
+				//check horizontal
+				count = 1;
+				for(var i = lastCol-1; i >= 0; i--){
+					if(map[i][lastRow] == player){
+						count += 1;
+					}
+					else{
+						break;
+					}
+				}
+				for(var i = lastCol+1; i <= 6; i++){
+					if(map[i][lastRow] == player){
+						count += 1;
+					}
+					else{
+						break;
+					}
+				}
+				if(count >= 4){
+					return player;
+				}
+				
+				//check diagonal /
+				count = 1;
+				for(var x = lastCol-1, y = lastRow+1; x >= 0 && y <= 5; x--, y++){
+					if(map[x][y] == player){
+						count += 1;
+					}
+					else{
+						break;
+					}
+				}
+				for(var x = lastCol+1, y = lastRow-1; x <= 6 && y >= 0; x++, y--){
+					if(map[x][y] == player){
+						count += 1;
+					}
+					else{
+						break;
+					}
+				}
+				if(count >= 4){
+					return player;
+				}
+				
+				//check diagonal \
+				count = 1;
+				for(var x = lastCol-1, y = lastRow-1; x >= 0 && y >= 0; x--, y--){
+					if(map[x][y] == player){
+						count += 1;
+					}
+					else{
+						break;
+					}
+				}
+				for(var x = lastCol+1, y = lastRow+1; x <= 6 && y <= 5; x++, y++){
+					if(map[x][y] == player){
+						count += 1;
+					}
+					else{
+						break;
+					}
+				}
+				if(count >= 4){
+					return player;
+				}
+				
+				//check if not draw
+				for(var i = 0; i < 7; i++){
+					if(countFreeSpace(i) > 0){
+						return 0;
+					}
+				}
+				
+				return -1;
+			}
+
+			function getDecision(player){
+				var max = -2;
+				var val;
+				var choice;
+				var row;
+				var win;
+				var choices = new Array();
+				for(var i = 0; i < 7; i++){
+					row = countFreeSpace(i);
+					if(row <= 0){
+						
+					}
+					else{
+						map[i][row-1] = player;
+						lastCol = i;
+						lastRow = row-1;
+						win = checkWin(player);
+						if(win == player){
+							val = 1;
+						}
+						else if(win == -1){
+							val = 0;
+						}
+						else{
+							val = getMin(max, ((player-1)*-1)+2, 1);
+						}
+						
+						if(val > max){
+							max = val;
+							choices.length = 0;
+							choices.push(i);
+						}
+						else if(val == max){
+							choices.push(i);
+						}
+						
+						map[i][row-1] = 0;
+					}
+				}
+				
+				
+				return choices[Math.floor((Math.random()*choices.length))];
+			}
+			
+			function getMax(min, player, depth){
+				//alert("max"+depth);
+				var max = -2;
+				var val;
+				var row;
+				var win;
+				for(var i = 0; i < 7; i++){
+					row = countFreeSpace(i);
+					if(row <= 0){
+						
+					}
+					else{
+						map[i][row-1] = player;
+						lastCol = i;
+						lastRow = row-1;
+						win = checkWin(player);
+						if(win == player){
+							val = 1;
+						}
+						else if(win == -1){
+							val = 0;
+						}
+						else if(depth > 6){
+							val = 0;
+						}
+						else{
+							val = getMin(max, ((player-1)*-1)+2, depth+1);
+						}
+						
+						if(val > max){
+							max = val;
+						}
+						
+						map[i][row-1] = 0;
+						
+						if(max > min){
+							return max;
+						}
+					}
+				}
+				
+				return max;
+			}
+			
+			function getMin(max, player, depth){
+				//alert("min"+depth);
+				var min = 2;
+				var val;
+				var row;
+				for(var i = 0; i < 7; i++){
+					row = countFreeSpace(i);
+					if(row <= 0){
+						
+					}
+					else{
+						map[i][row-1] = player;
+						lastCol = i;
+						lastRow = row-1;
+						win = checkWin(player);
+						if(win == player){
+							val = -1;
+						}
+						else if(win == -1){
+							val = 0;
+						}
+						else if(depth > 6){
+							val = 0;
+						}
+						else{
+							val = getMax(min, ((player-1)*-1)+2, depth+1);
+						}
+						
+						if(val < min){
+							min = val;
+						}
+						
+						map[i][row-1] = 0;
+						
+						if(min < max){
+							return min;
+						}
+					}
+				}
+				
+				return min;
+			}
+			
+			function computerMove(){
+				drop(getDecision(turn),false);
+			}
+        </script>
+    </head>
+    <body onLoad="init()">
+			<div id="titlePane">
+				CONNECT 4
+			</div>
+            <div id="mainContainer">
+                <div id="topPane">
+                    <input id="newGameButton" type="button" value="New Game" onClick="newGame()"/>
+                    <input id="newMatchButton" type="button" value="New Match" onClick="newMatch()"/>
+                </div>
+                <div id="leftPane">
+                    PLAYER 1 (Red)<br/>
+					<br/>
+                    Name:<br/>
+                    <input id="p1Name" type="text"/><br/>
+					<br/>
+                    Type:<br/>
+                    <form>
+                        <input type="radio" name="p1Type" value="human" checked />Human<br/>
+                        <input type="radio" name="p1Type" value="computer" />Computer<br/>
+                    </form>
+                    Wins:
+                    <label id="p1Wins"><label/>
+                </div>
+                <div id="rightPane">
+					PLAYER 2 (Blue)<br/>
+					<br/>
+                    Name:<br/>
+                    <input id="p2Name" type="text"/><br/>
+					<br/>
+                    Type:<br/>
+                    <form>
+                        <input type="radio" name="p2Type" value="human" checked />Human<br/>
+                        <input type="radio" name="p2Type" value="computer" />Computer<br/>
+                    </form>
+                    Wins:
+                    <label id="p2Wins"><label/>
+                </div>
+                <div id="centerPane">
+                    <div class="column" onClick="drop(0,true)">
+                    </div>
+                    <div class="column" onClick="drop(1,true)">
+                    </div>
+                    <div class="column" onClick="drop(2,true)">
+                    </div>
+                    <div class="column" onClick="drop(3,true)">
+                    </div>
+                    <div class="column" onClick="drop(4,true)">
+                    </div>
+                    <div class="column" onClick="drop(5,true)">
+                    </div>
+                    <div class="column" onClick="drop(6,true)">
+                    </div>
+                </div>
+                <div id="bottomPane">
+                </div>
+            </div>
+    </body>
+</html>
