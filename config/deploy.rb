@@ -1,12 +1,13 @@
 require "rvm/capistrano"
 require 'bundler/capistrano'
+
 set :user, 'maynard2'
 set :domain, '50.56.246.165'
 set :applicationdir, "/home/maynard2/connect4app"
  
 set :scm, 'git'
-set :repository,  "git@github.com:maynardlandrito/random.git"
-#set :git_enable_submodules, 1 # if you have vendored rails
+set :repository,  "ssh://git@github.com:maynardlandrito/random.git"
+#111set :git_enable_submodules, 1 # if you have vendored rails
 set :branch, 'master'
 #set :git_shallow_clone, 1
 set :scm_verbose, true
